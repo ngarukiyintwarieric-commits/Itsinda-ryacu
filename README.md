@@ -1,82 +1,71 @@
-# ITSINDA RYACU — starter project
+# ITSINDA RYACU — v0.6 (work in progress)
 
-This is a working **UI prototype** for a multilingual savings-group and Mutuelle planning app. It is not yet a live financial service.
+## Added in this version
+- Mutuelle de Santé savings planning: household label, target amount, due date, weekly/monthly savings plan.
+- Record savings entries and see target progress, remaining amount, due-date countdown, and history.
+- Supabase migration with owner-scoped Row Level Security.
+- Added Vite/React project configuration files that were missing from the supplied ZIP.
 
-## Requirements
-- Node.js 20.19+ or 22.12+
-- npm
-- For Android packaging: Android Studio and a supported Java/Android SDK setup
+## Important limitations
+- This is a savings-planning and tracking feature, not an official Mutuelle payment integration.
+- Entries are user-recorded and marked as `recorded`; they are not independently verified payments.
+- Before handling real funds, implement a trusted treasurer confirmation process, immutable audit logs, backups, access testing, and approved payment-provider integration.
+- Apply `supabase/migration_mutuelle_savings_v04.sql` in the Supabase SQL Editor after reviewing it.
+- Existing `supabase/schema.sql` should only be run in a new project or after careful review.
 
 ## Run locally
-1. Extract the ZIP.
-2. Open a terminal in the `itsinda-ryacu-starter` folder.
-3. Run:
-   ```bash
-   npm install
-   npm run dev
-   ```
-4. Open the local URL printed by Vite, usually `http://localhost:5173`.
+1. Install Node.js LTS.
+2. Run `npm install`.
+3. Copy `.env.example` to `.env.local` and add your Supabase URL and publishable/anon key.
+4. Apply the SQL schema and the Mutuelle migration in Supabase.
+5. Run `npm run dev`.
 
-## Languages
-Use the language selector in the top-right corner: Kinyarwanda, English, French, and Swahili.
+## Deploy
+Push the project to a private GitHub repository, import it into Vercel, configure the two environment variables, and deploy. Connect a domain after testing.
 
-## Supabase setup (not connected by default)
-1. Create a Supabase project.
-2. Copy `.env.example` to `.env.local`.
-3. Set `VITE_SUPABASE_URL` and `VITE_SUPABASE_ANON_KEY` using the project's URL and publishable key (or legacy anon key).
-4. In Supabase SQL Editor, review `supabase/schema.sql` and run it in the new project.
-5. Restart the Vite dev server after editing environment variables.
+## v0.5 work in progress: SMS OTP, penalties, and trial metadata
 
-Never put a `service_role` or `sb_secret` key in browser code. The current UI does not yet read/write Supabase data.
+This archive adds the first UI/database implementation for:
 
-## Build for web
-```bash
-npm run build
-npm run preview
-```
-Upload the contents of `dist/` to a static host such as Netlify. Do not deploy until `npm run build` succeeds.
+- Phone-number sign-in with one-time SMS codes (OTP).
+- A legacy email/password sign-in path so existing email-based users are not immediately locked out.
+- Group-specific penalty rules (fixed, daily, weekly, or manually set amount), approval, penalty records, and a database audit log.
+- Three-month trial metadata for each newly created group, with initial Pro price display (RWF 3,000 / 5,000 per month).
 
-## Prepare Android project
-```bash
-npm run android:add
-npm run android:sync
-npm run android:open
-```
-These commands require the Android development tools. They create/open an Android wrapper around the built web app; they do not publish it to Google Play automatically.
+### Required setup before testing
 
-## Not implemented yet
-- Authentication and account recovery
-- Real savings ledger and loan workflows
-- Payment provider integrations (MTN MoMo, Airtel Money, bank)
-- Official Mutuelle data lookup/payment integration
-- SMS and WhatsApp messaging provider integration
-- Production-grade financial audit trail, consent, security review, and regulatory checks
+1. Configure `VITE_SUPABASE_URL` and `VITE_SUPABASE_ANON_KEY` in `.env.local` using the project's public/publishable key. Never put a `service_role` or `sb_secret` key in the frontend.
+2. In Supabase Authentication, enable Phone and configure an SMS provider with valid credentials and adequate balance. The OTP UI will not send SMS until this is configured.
+3. Review and run `supabase/migration_v05_penalties_trial.sql` in the Supabase SQL Editor. Back up important data first and read the SQL before applying it.
+4. Test with a test phone number and test group before using real member data.
 
-All displayed financial values are zero and any displayed activity is explanatory only. No real payments are made by this prototype.
+### Important limits that remain
+
+- National ID verification is **not connected**. The app intentionally does not collect or store the raw national ID number. To verify that a phone number matches an ID, an approved identity-verification service or a properly authorized manual workflow is still required.
+- The Pro subscription screen and 3-month trial dates are metadata only. No payment provider, Mobile Money transaction, webhook, or server-side payment verification is connected yet. Do not charge customers or restrict access based on these UI values alone.
+- The current penalty records identify the member by a typed display name; linking them to a verified member directory is a later step. A marked “paid” record is a manual record only, not confirmation from a bank or Mobile Money provider.
+- Penalty approvers are assigned using their Supabase user UUID. A friendlier member/role management workflow remains to be built.
+- The build could not be fully run in this environment because npm dependencies could not be downloaded. TypeScript/TSX syntax transpilation succeeded, but a full dependency-aware build and live Supabase test are still required.
 
 
-## Version 0.2 — account access
+## v0.6 work in progress: member ledger, announcements and group end date
 
-This version adds a Supabase email/password sign-up and sign-in screen, session persistence, sign-out, and a profile upsert when a newly created account receives an immediate session. If email confirmation is enabled, the user must confirm their email before signing in.
+This version adds:
+- Member directory per group (name, phone, join date and expected monthly contribution).
+- Per-member contribution entries with a separate confirmation status. Only confirmed entries count toward the paid total.
+- Member-by-member summary: expected total (monthly due multiplied by calendar months since joining), confirmed paid, pending recorded payments and remaining amount. This is a simple estimate; groups with irregular schedules must adjust their rules.
+- Planned group end date and a reminder-days setting. The app displays countdowns, but scheduled automatic reminders are not enabled yet.
+- Group announcements saved in the database and a Supabase Edge Function to send the announcement to active members via Twilio SMS.
 
-Before use:
-1. Copy `.env.example` to `.env.local`.
-2. Set the Supabase project URL and **publishable key** (or legacy anon key) in `.env.local`.
-3. Review and run `supabase/schema.sql` in the Supabase SQL Editor.
-4. In Supabase Authentication settings, configure the site's allowed redirect URLs and email confirmation as appropriate.
-5. Run `npm install` and `npm run build` in an environment with Node.js installed.
+### Required setup for v0.6
+1. Back up your database and review `supabase/migration_v06_members_announcements.sql`, then apply it in Supabase SQL Editor. Do not rerun `schema.sql` on your existing project.
+2. Deploy `supabase/functions/send-group-announcement/index.ts` as the Edge Function `send-group-announcement`.
+3. Set function secrets: `SUPABASE_URL`, `SUPABASE_ANON_KEY`, `SUPABASE_SERVICE_ROLE_KEY`, `TWILIO_ACCOUNT_SID`, `TWILIO_AUTH_TOKEN`, and `TWILIO_FROM_NUMBER`. Never put the service-role key or Twilio token in frontend `.env` or share them in chat.
+4. Test with a small test group and numbers you control before sending to all members. SMS charges may apply. The function reports messages accepted by Twilio; that is not necessarily proof of delivery to the handset.
+5. Only the account that created the group can currently manage the directory and send group announcements. Committee/member roles and member self-service linking still need a dedicated workflow.
 
-Security and scope:
-- Never use a `service_role` or `sb_secret` key in the browser app.
-- The dashboard is still a prototype and does not yet show real savings, loan balances, or Mutuelle payments.
-- No actual payment is initiated or verified by this version.
-- Authentication and SQL have not been validated against your live Supabase project. Review policies before production use.
-
-
-## v0.3 — group lifecycle and monthly overview
-- Create a group with its start date, planned monthly contribution, target amount and member count.
-- Close an active group with an end date and a note.
-- View a monthly overview and export a CSV summary.
-- If you already ran the older schema, review and run `supabase/migration_groups_reports_v03.sql` in Supabase SQL Editor. For a new project, use the updated `supabase/schema.sql`.
-- The monthly report currently summarizes group setup/status only. It is **not** a financial statement: savings, expenses, loans and repayments need a proper auditable ledger and verified payment workflow before the report can be considered complete.
-- Without Supabase configured and signed in, group records exist only in the current browser session and are lost when the page is reloaded.
+### Important limits
+- The migration adds a member directory separate from Supabase Authentication; it does not automatically create member login accounts or link phone numbers to identity-verified accounts.
+- Expected contributions are estimated from monthly dues and calendar months since joining; they do not model pauses, partial periods, waivers, or group-specific schedules.
+- The planned end-date reminder is stored and countdown is shown, but automated scheduled SMS reminders require a scheduled Edge Function/cron job, which is not included yet.
+- Build and live Supabase/Twilio tests must be completed before production use.
