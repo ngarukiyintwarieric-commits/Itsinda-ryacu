@@ -1,0 +1,23 @@
+name: Restore ITSINDA RYACU folders
+
+on:
+workflow_dispatch:
+
+permissions:
+contents: write
+
+jobs:
+restore:
+runs-on: ubuntu-latest
+steps:
+- name: Get repository
+uses: actions/checkout@v4
+
+  - name: Extract project ZIP
+    run: |
+      unzip -o itsinda-ryacu-src-supabase.zip -d .
+      git add -A
+      git config user.name "github-actions[bot]"
+      git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+      git diff --cached --quiet || git commit -m "Restore src and supabase folders"
+      git push
